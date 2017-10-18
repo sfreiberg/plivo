@@ -5,7 +5,6 @@ package plivo
 import (
 	"bytes"
 	"encoding/json"
-	"log"
 	"net/http"
 )
 
@@ -103,8 +102,6 @@ func (c *Client) send(url, method string, i interface{}) (*Response, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
-
-	log.Printf("Response: %+v\n", resp.Request)
 
 	err = json.NewDecoder(resp.Body).Decode(res)
 
