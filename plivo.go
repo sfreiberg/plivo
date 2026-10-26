@@ -77,7 +77,7 @@ func (c *Client) Message(m *Message) (*Response, error) {
 	return c.send(url, "POST", m)
 }
 
-func (c *Client) send(url, method string, i interface{}) (*Response, error) {
+func (c *Client) send(url, method string, i any) (*Response, error) {
 	res := &Response{}
 
 	body, err := json.Marshal(i)
