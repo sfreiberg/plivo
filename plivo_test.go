@@ -117,3 +117,29 @@ func TestAPIErrorIsDecoded(t *testing.T) {
 		t.Fatalf("Error = %q, want %q", res.Error, "invalid dst")
 	}
 }
+
+func TestConcurrentUseWithDefaultClient(t *testing.T) {
+	// A zero HTTPClient must not be written to during requests, otherwise
+	// concurrent use of the Client is a data race (caught by -race).
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{}`))
+	}))
+	defer srv.Close()
+
+	c := &Client{AuthID: "id", AuthToken: "tok"}
+	done := make(chan struct{})
+	for range 4 {
+		go func() {
+			defer func() { done <- struct{}{} }()
+			// Requests go to the real BaseURL host; use send directly so the
+			// test stays local.
+			c.send(srv.URL, http.MethodPost, &Message{})
+		}()
+	}
+	for range 4 {
+		<-done
+	}
+	if c.HTTPClient != nil {
+		t.Fatal("send must not modify Client.HTTPClient")
+	}
+}

@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"net/http"
+	"net/url"
 )
 
 const BaseURL = "https://api.plivo.com/v1/"
@@ -66,15 +67,15 @@ type Client struct {
 }
 
 func (c *Client) Call(call *Call) (*Response, error) {
-	url := BaseURL + "Account/" + c.AuthID + "/Call/"
+	endpoint := BaseURL + "Account/" + url.PathEscape(c.AuthID) + "/Call/"
 
-	return c.send(url, "POST", call)
+	return c.send(endpoint, "POST", call)
 }
 
 func (c *Client) Message(m *Message) (*Response, error) {
-	url := BaseURL + "Account/" + c.AuthID + "/Message/"
+	endpoint := BaseURL + "Account/" + url.PathEscape(c.AuthID) + "/Message/"
 
-	return c.send(url, "POST", m)
+	return c.send(endpoint, "POST", m)
 }
 
 func (c *Client) send(url, method string, i any) (*Response, error) {
@@ -93,11 +94,14 @@ func (c *Client) send(url, method string, i any) (*Response, error) {
 	req.SetBasicAuth(c.AuthID, c.AuthToken)
 	req.Header.Set("Content-Type", "application/json")
 
-	if c.HTTPClient == nil {
-		c.HTTPClient = http.DefaultClient
+	// Don't assign to c.HTTPClient here: doing so is a data race when the
+	// Client is shared between goroutines.
+	httpClient := c.HTTPClient
+	if httpClient == nil {
+		httpClient = http.DefaultClient
 	}
 
-	resp, err := c.HTTPClient.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
